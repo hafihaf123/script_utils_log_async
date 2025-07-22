@@ -1,0 +1,7 @@
+env/
+pyrightconfig.json
+
+# python package metadata
+*.pyc
+/dist/
+/*.egg-info
