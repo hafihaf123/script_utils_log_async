@@ -31,12 +31,12 @@ async def fetch_with_retry(
             return response
         except httpx.RequestError:
             if attempt == retries - 1:
-                raise Exception(f"Request to '{url}' failed after {retries} attempts")
+                raise
             await backoff(attempt + 1)
             continue
         except httpx.HTTPStatusError as status_exception:
             if attempt == retries - 1:
-                raise Exception(f"Request to '{url}' failed after {retries} attempts")
+                raise
             retry_after = cast(
                 str, status_exception.response.headers.get("Retry-After")
             )
@@ -51,4 +51,4 @@ async def fetch_with_retry(
                 f"Rate limited. Retrying after {retry_after_seconds} seconds."
             )
             await asyncio.sleep(retry_after_seconds)
-    raise
+    raise Exception(f"Failed to fetch response from: {url}")
