@@ -3,7 +3,7 @@ import logging
 import signal
 import time
 from collections.abc import Coroutine
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable, Union, cast
 
 from script_utils_log_async.logging_setup import setup_logging, trigger_shutdown_filter
@@ -38,6 +38,10 @@ class SetupMainConfig:
     on_cancel: VoidFun = lambda: logging.info("Currently running task was cancelled.")
     on_finish: VoidFun = lambda: logging.info("Current task completed normally.")
     setup_logging: VoidFun = setup_logging
+    post_main_callbacks: list[VoidFun] = field(default_factory=list)
+
+    def register_post_main_callback(self, callback: VoidFun) -> None:
+        self.post_main_callbacks.append(callback)
 
 
 def start_end_decorator(
@@ -60,6 +64,11 @@ def start_end_decorator(
             except Exception:
                 config.on_main_exception()
             finally:
+                for callback in config.post_main_callbacks:
+                    try:
+                        callback()
+                    except Exception:
+                        logging.exception("Post-main callback failed.")
                 config.on_main_end()
                 if config.log_time and start_time:
                     end_time = round(time.time() - start_time, 2)
