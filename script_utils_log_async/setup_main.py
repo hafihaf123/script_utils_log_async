@@ -25,7 +25,7 @@ def setup_main(
     is_async: Literal[False],
     setup_logging_func: Callable[[], None] = ...,
     do_on_shutdown_catch: Callable[[], None] = ...,
-) -> Callable[[SyncMainCoroutine], Callable[[], Awaitable[None]]]: ...
+) -> Callable[[SyncMainCoroutine], Callable[[], None]]: ...
 
 
 def setup_main(
@@ -33,7 +33,7 @@ def setup_main(
     is_async: bool,
     setup_logging_func: Callable[[], None] = setup_logging,
     do_on_shutdown_catch: Callable[[], None] = trigger_shutdown_filter,
-) -> Callable[..., Callable[[], Awaitable[None]]]:
+) -> Callable[..., Callable[[], Union[Awaitable[None], None]]]:
     def decorator(main_coroutine: MainCoroutine):
         async def wrapper():
             setup_logging_func()
