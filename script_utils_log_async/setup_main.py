@@ -76,7 +76,7 @@ def setup_main(
     config: SetupMainConfig,
 ) -> Callable[[MainCoroutine], SyncMainCoroutine]:
     def decorator(main_coroutine: MainCoroutine) -> VoidFun:
-        async def async_wrapper() -> None:
+        def async_wrapper() -> None:
             config.setup_logging()
 
             @start_end_decorator(config)
@@ -115,12 +115,12 @@ def setup_main(
             async_main()
 
         def sync_wrapper() -> None:
-            if config.is_async:
-                return asyncio.run(async_wrapper())
             config.setup_logging()
             decorated_main_coroutine = start_end_decorator(config)(main_coroutine)
             decorated_main_coroutine()
 
+        if config.is_async:
+            return async_wrapper
         return sync_wrapper
 
     return decorator
