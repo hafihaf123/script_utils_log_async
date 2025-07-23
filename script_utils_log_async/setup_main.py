@@ -4,7 +4,7 @@ import logging
 import signal
 import time
 from collections.abc import Coroutine
-from typing import Callable, Optional, Union, cast
+from typing import Callable, Union, cast
 
 from script_utils_log_async.logging_setup import setup_logging, trigger_shutdown_filter
 
@@ -74,17 +74,13 @@ def start_end_decorator(config: SetupMainConfig):
 
 
 def setup_main(
-    is_async: bool,
-    config: Optional[SetupMainConfig] = None,
+    config: SetupMainConfig,
 ) -> Callable[[MainCoroutine], SyncMainCoroutine]:
-    if not config:
-        config = SetupMainConfig(is_async)
-
     def decorator(main_coroutine: MainCoroutine):
         async def async_wrapper():
             config.setup_logging()
 
-            if is_async:
+            if config.is_async:
                 async_start_end_decorator = cast(
                     Callable[
                         [SetupMainConfig], Callable[[MainCoroutine], AsyncMainCoroutine]
