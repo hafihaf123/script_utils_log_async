@@ -1,9 +1,9 @@
 import asyncio
-from dataclasses import dataclass
 import logging
 import signal
 import time
 from collections.abc import Coroutine
+from dataclasses import dataclass
 from typing import Callable, Union, cast
 
 from script_utils_log_async.logging_setup import setup_logging, trigger_shutdown_filter
@@ -17,13 +17,13 @@ MainCoroutine = Callable[..., Union[Coroutine[object, object, None], None]]
 @dataclass
 class SetupMainConfig:
     @staticmethod
-    def my_on_main_start():
+    def my_on_main_start() -> None:
         print("=" * 70)
         logging.info("Script started.")
         print("=" * 70)
 
     @staticmethod
-    def my_on_shutdown_catch():
+    def my_on_shutdown_catch() -> None:
         logging.warning("Shutdown signal received. Shutting down.")
         trigger_shutdown_filter()
 
@@ -39,9 +39,11 @@ class SetupMainConfig:
     setup_logging: VoidFun = setup_logging
 
 
-def start_end_decorator(config: SetupMainConfig):
-    def decorator(func: MainCoroutine) -> Union[AsyncMainCoroutine, SyncMainCoroutine]:
-        async def async_wrapper():
+def start_end_decorator(
+    config: SetupMainConfig,
+) -> Callable[[MainCoroutine], SyncMainCoroutine]:
+    def decorator(func: MainCoroutine) -> SyncMainCoroutine:
+        async def async_wrapper() -> None:
             config.on_main_start()
             start_time = None
             if config.log_time:
@@ -62,13 +64,10 @@ def start_end_decorator(config: SetupMainConfig):
                     logging.info(f"Script ended after {end_time} seconds.")
                 print()
 
-        def sync_wrapper():
+        def sync_wrapper() -> None:
             asyncio.run(async_wrapper())
 
-        if config.is_async:
-            return async_wrapper
-        else:
-            return sync_wrapper
+        return sync_wrapper
 
     return decorator
 
@@ -76,59 +75,58 @@ def start_end_decorator(config: SetupMainConfig):
 def setup_main(
     config: SetupMainConfig,
 ) -> Callable[[MainCoroutine], SyncMainCoroutine]:
-    def decorator(main_coroutine: MainCoroutine):
-        async def async_wrapper():
+    def decorator(main_coroutine: MainCoroutine) -> VoidFun:
+        async def async_wrapper() -> None:
             config.setup_logging()
 
-            if config.is_async:
-                async_start_end_decorator = cast(
-                    Callable[
-                        [SetupMainConfig], Callable[[MainCoroutine], AsyncMainCoroutine]
-                    ],
-                    start_end_decorator,
+            async_start_end_decorator = cast(
+                Callable[
+                    [SetupMainConfig], Callable[[MainCoroutine], AsyncMainCoroutine]
+                ],
+                start_end_decorator,
+            )
+
+            @async_start_end_decorator(config)
+            async def async_main() -> None:
+                loop = asyncio.get_running_loop()
+                stop_event = asyncio.Event()
+
+                def on_shutdown():
+                    config.on_shutdown_catch()
+                    stop_event.set()
+
+                signals_to_handle: list[int] = [
+                    signal.SIGINT,
+                    signal.SIGTERM,
+                    signal.SIGHUP,
+                ]
+                for sig in signals_to_handle:
+                    loop.add_signal_handler(sig, on_shutdown)
+
+                async_main_coroutine = cast(AsyncMainCoroutine, main_coroutine)
+                main_task = asyncio.create_task(async_main_coroutine())
+
+                _ = await asyncio.wait(
+                    {main_task, asyncio.create_task(stop_event.wait())},
+                    return_when=asyncio.FIRST_COMPLETED,
                 )
+                if stop_event.is_set():
+                    _ = main_task.cancel()
+                    try:
+                        await main_task
+                    except asyncio.CancelledError:
+                        config.on_cancel()
+                else:
+                    config.on_finish()
 
-                @async_start_end_decorator(config)
-                async def async_main():
-                    loop = asyncio.get_running_loop()
-                    stop_event = asyncio.Event()
+            await async_main()
 
-                    def on_shutdown():
-                        config.on_shutdown_catch()
-                        stop_event.set()
-
-                    signals_to_handle: list[int] = [
-                        signal.SIGINT,
-                        signal.SIGTERM,
-                        signal.SIGHUP,
-                    ]
-                    for sig in signals_to_handle:
-                        loop.add_signal_handler(sig, on_shutdown)
-
-                    async_main_coroutine = cast(AsyncMainCoroutine, main_coroutine)
-                    main_task = asyncio.create_task(async_main_coroutine())
-
-                    _ = await asyncio.wait(
-                        {main_task, asyncio.create_task(stop_event.wait())},
-                        return_when=asyncio.FIRST_COMPLETED,
-                    )
-                    if stop_event.is_set():
-                        _ = main_task.cancel()
-                        try:
-                            await main_task
-                        except asyncio.CancelledError:
-                            config.on_cancel()
-                    else:
-                        config.on_finish()
-
-                await async_main()
-            else:
-                decorated_main_coroutine = start_end_decorator(config)(main_coroutine)
-                sync_main_coroutine = cast(SyncMainCoroutine, decorated_main_coroutine)
-                sync_main_coroutine()
-
-        def sync_wrapper():
-            asyncio.run(async_wrapper())
+        def sync_wrapper() -> None:
+            if config.is_async:
+                return asyncio.run(async_wrapper())
+            config.setup_logging()
+            decorated_main_coroutine = start_end_decorator(config)(main_coroutine)
+            decorated_main_coroutine()
 
         return sync_wrapper
 

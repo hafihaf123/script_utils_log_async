@@ -12,7 +12,7 @@ async def fetch_with_retry(
     params: Optional[dict[str, str]] = None,
     retries: int = 5,
     initial_backoff: int = 5,
-):
+) -> httpx.Response:
     import httpx
 
     async def backoff(attempt: int):

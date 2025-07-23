@@ -6,7 +6,7 @@ from typing_extensions import override
 _shutdown_flag = False
 
 
-def trigger_shutdown_filter():
+def trigger_shutdown_filter() -> None:
     global _shutdown_flag
     _shutdown_flag = True
 
@@ -18,7 +18,7 @@ def setup_logging(
     fmt: str = "%(asctime)s [%(levelname)s] %(message)s",
     shutdown_filter: bool = False,
     httpx_filter: bool = False,
-):
+) -> None:
     class ShutdownFilter(logging.Filter):
         @override
         def filter(self, record: logging.LogRecord):
