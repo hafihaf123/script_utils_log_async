@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     import httpx
@@ -9,13 +9,14 @@ if TYPE_CHECKING:
 async def fetch_with_retry(
     client: "httpx.AsyncClient",
     url: str,
-    params: Optional[dict[str, str]] = None,
+    *,
     retries: int = 5,
     initial_backoff: int = 5,
+    **kwargs: Any,  # pyright: ignore[reportAny, reportExplicitAny]
 ) -> "httpx.Response":
     import httpx
 
-    async def backoff(attempt: int):
+    async def backoff(attempt: int) -> None:
         nonlocal initial_backoff
         backoff_time = initial_backoff * attempt
         logging.warning(
@@ -25,7 +26,7 @@ async def fetch_with_retry(
 
     for attempt in range(retries):
         try:
-            response = await client.get(url, params=params)
+            response = await client.get(url, **kwargs)  # pyright: ignore[reportAny]
             _ = response.raise_for_status()
             return response
         except httpx.RequestError:
