@@ -30,6 +30,7 @@ class SetupMainConfig:
     is_async: bool
     log_time: bool = True
     on_main_start: VoidFun = my_on_main_start
+    on_main_end: VoidFun = lambda: None
     on_main_exception: VoidFun = lambda: logging.exception(
         "Unhandled exception occurred in main."
     )
@@ -59,6 +60,7 @@ def start_end_decorator(
             except Exception:
                 config.on_main_exception()
             finally:
+                config.on_main_end()
                 if config.log_time and start_time:
                     end_time = round(time.time() - start_time, 2)
                     logging.info(f"Script ended after {end_time} seconds.")
