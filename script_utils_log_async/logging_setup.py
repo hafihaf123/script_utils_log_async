@@ -16,7 +16,7 @@ def setup_logging(
     *,
     stderr_level: Optional[int] = None,
     fmt: str = "%(asctime)s [%(levelname)s] %(message)s",
-    shutdown_filter: bool = True,
+    shutdown_filter: bool = False,
     httpx_filter: bool = False,
 ):
     class ShutdownFilter(logging.Filter):

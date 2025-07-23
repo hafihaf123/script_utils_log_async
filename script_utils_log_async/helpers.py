@@ -1,16 +1,20 @@
 import asyncio
 import logging
-from typing import Optional, cast
-import httpx
+from typing import TYPE_CHECKING, Optional, cast
+
+if TYPE_CHECKING:
+    import httpx
 
 
 async def fetch_with_retry(
-    client: httpx.AsyncClient,
+    client: "httpx.AsyncClient",
     url: str,
     params: Optional[dict[str, str]] = None,
     retries: int = 5,
     initial_backoff: int = 5,
 ):
+    import httpx
+
     async def backoff(attempt: int):
         nonlocal initial_backoff
         backoff_time = initial_backoff * attempt
