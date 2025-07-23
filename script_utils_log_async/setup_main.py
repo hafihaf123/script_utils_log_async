@@ -79,14 +79,7 @@ def setup_main(
         async def async_wrapper() -> None:
             config.setup_logging()
 
-            async_start_end_decorator = cast(
-                Callable[
-                    [SetupMainConfig], Callable[[MainCoroutine], AsyncMainCoroutine]
-                ],
-                start_end_decorator,
-            )
-
-            @async_start_end_decorator(config)
+            @start_end_decorator(config)
             async def async_main() -> None:
                 loop = asyncio.get_running_loop()
                 stop_event = asyncio.Event()
@@ -119,7 +112,7 @@ def setup_main(
                 else:
                     config.on_finish()
 
-            await async_main()
+            async_main()
 
         def sync_wrapper() -> None:
             if config.is_async:
