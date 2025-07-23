@@ -17,6 +17,7 @@ def setup_main(
     is_async: Literal[True],
     *,
     setup_logging_func: Callable[[], None] = ...,
+    do_on_shutdown_catch: Callable[[], None] = ...,
 ) -> Callable[[], Awaitable[None]]: ...
 @overload
 def setup_main(
@@ -24,6 +25,7 @@ def setup_main(
     is_async: Literal[False],
     *,
     setup_logging_func: Callable[[], None] = ...,
+    do_on_shutdown_catch: Callable[[], None] = ...,
 ) -> Callable[[], Awaitable[None]]: ...
 
 
@@ -32,6 +34,7 @@ def setup_main(
     is_async: bool,
     *,
     setup_logging_func: Callable[[], None] = setup_logging,
+    do_on_shutdown_catch: Callable[[], None] = trigger_shutdown_filter,
 ) -> Callable[[], Awaitable[None]]:
     async def wrapper():
         setup_logging_func()
@@ -50,7 +53,7 @@ def setup_main(
                     logging.warning(
                         "Shutdown signal received! Saving prograss and shutting down."
                     )
-                    trigger_shutdown_filter()
+                    do_on_shutdown_catch()
                     stop_event.set()
 
                 signals_to_handle: list[int] = [
