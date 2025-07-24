@@ -10,6 +10,7 @@ async def fetch_with_retry(
     client: "httpx.AsyncClient",
     url: str,
     *,
+    enable_logging: bool = False,
     retries: int = 5,
     initial_backoff: int = 5,
     **kwargs: Any,  # pyright: ignore[reportAny, reportExplicitAny]
@@ -19,9 +20,10 @@ async def fetch_with_retry(
     async def backoff(attempt: int) -> None:
         nonlocal initial_backoff
         backoff_time = initial_backoff * attempt
-        logging.warning(
-            f"Request to '{url}' failed. Using backoff: {backoff_time} seconds."
-        )
+        if enable_logging:
+            logging.warning(
+                f"Request to '{url}' failed. Using backoff: {backoff_time} seconds."
+            )
         await asyncio.sleep(backoff_time)
 
     for attempt in range(retries):
@@ -47,8 +49,9 @@ async def fetch_with_retry(
             retry_after_seconds = int(retry_after)
             if retry_after_seconds > 60:
                 raise Exception("Too long retry time")
-            logging.warning(
-                f"Rate limited. Retrying after {retry_after_seconds} seconds."
-            )
+            if enable_logging:
+                logging.warning(
+                    f"Rate limited. Retrying after {retry_after_seconds} seconds."
+                )
             await asyncio.sleep(retry_after_seconds)
     raise Exception(f"Failed to fetch response from: {url}")
