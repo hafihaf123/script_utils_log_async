@@ -1,9 +1,11 @@
 import asyncio
 import logging
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 if TYPE_CHECKING:
     import httpx
+
+RAISE_ON_ALL = object()
 
 
 async def fetch_with_retry(
@@ -11,7 +13,7 @@ async def fetch_with_retry(
     url: str,
     *,
     enable_logging: bool = False,
-    raise_on_status_error: bool = False,
+    raise_on_status_errors: Optional[Union[list[int], object]] = RAISE_ON_ALL,  # noqa: F821
     retries: int = 5,
     initial_backoff: int = 5,
     **kwargs: Any,  # pyright: ignore[reportAny, reportExplicitAny]
@@ -38,14 +40,17 @@ async def fetch_with_retry(
             await backoff(attempt + 1)
             continue
         except httpx.HTTPStatusError as status_exception:
+            if raise_on_status_errors is RAISE_ON_ALL or (
+                isinstance(raise_on_status_errors, list)
+                and status_exception.response.status_code in raise_on_status_errors
+            ):
+                raise
             if attempt == retries - 1:
                 raise
             retry_after = cast(
                 str, status_exception.response.headers.get("Retry-After")
             )
             if not retry_after:
-                if raise_on_status_error:
-                    raise
                 await backoff(attempt + 1)
                 continue
 
