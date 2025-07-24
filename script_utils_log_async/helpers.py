@@ -11,6 +11,7 @@ async def fetch_with_retry(
     url: str,
     *,
     enable_logging: bool = False,
+    raise_on_status_error: bool = False,
     retries: int = 5,
     initial_backoff: int = 5,
     **kwargs: Any,  # pyright: ignore[reportAny, reportExplicitAny]
@@ -43,6 +44,8 @@ async def fetch_with_retry(
                 str, status_exception.response.headers.get("Retry-After")
             )
             if not retry_after:
+                if raise_on_status_error:
+                    raise
                 await backoff(attempt + 1)
                 continue
 
