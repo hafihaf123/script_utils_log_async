@@ -1,11 +1,17 @@
 import asyncio
 import logging
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 if TYPE_CHECKING:
     import httpx
 
-RAISE_ON_ALL = object()
+
+class RaiseOnAll(Enum):
+    token = 0
+
+
+RAISE_ON_ALL = RaiseOnAll.token
 
 
 async def fetch_with_retry(
@@ -13,7 +19,7 @@ async def fetch_with_retry(
     url: str,
     *,
     enable_logging: bool = False,
-    raise_on_status_errors: Optional[Union[list[int], object]] = RAISE_ON_ALL,  # noqa: F821
+    raise_on_status_errors: Optional[Union[list[int], RaiseOnAll]] = None,
     retries: int = 5,
     initial_backoff: int = 5,
     **kwargs: Any,  # pyright: ignore[reportAny, reportExplicitAny]

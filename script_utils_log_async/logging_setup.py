@@ -1,6 +1,7 @@
 import logging
 import sys
 from typing import Optional
+
 from typing_extensions import override
 
 _shutdown_flag = False
@@ -14,7 +15,7 @@ def trigger_shutdown_filter() -> None:
 def setup_logging(
     level: int = logging.INFO,
     *,
-    stderr_level: Optional[int] = None,
+    stderr_level: Optional[int] = logging.ERROR,
     fmt: str = "%(asctime)s [%(levelname)s] %(message)s",
     shutdown_filter: bool = False,
     httpx_filter: bool = False,
