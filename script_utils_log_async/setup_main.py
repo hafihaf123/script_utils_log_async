@@ -21,18 +21,18 @@ class _Unset(Enum):
 _UNSET = _Unset.token
 
 
+def my_on_main_start() -> None:
+    print("=" * 70)
+    logging.info("Script started.")
+    print("=" * 70)
+
+
+def my_on_shutdown_catch() -> None:
+    logging.warning("Shutdown signal received. Shutting down.")
+    trigger_shutdown_filter()
+
+
 class SetupMainConfig:
-    @staticmethod
-    def my_on_main_start() -> None:
-        print("=" * 70)
-        logging.info("Script started.")
-        print("=" * 70)
-
-    @staticmethod
-    def my_on_shutdown_catch() -> None:
-        logging.warning("Shutdown signal received. Shutting down.")
-        trigger_shutdown_filter()
-
     @overload
     def __init__(
         self,
