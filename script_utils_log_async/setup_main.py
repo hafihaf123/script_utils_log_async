@@ -1,16 +1,17 @@
 import asyncio
+import functools
 import logging
 import signal
 import time
 from collections.abc import Coroutine
 from enum import Enum
-from typing import Callable, Literal, Union, cast, overload
+from typing import Any, Callable, Literal, Union, cast, overload
 
 from script_utils_log_async.logging_setup import setup_logging, trigger_shutdown_filter
 
 VoidFun = Callable[[], None]
-AsyncMainCoroutine = Callable[[], Coroutine[object, object, None]]
-SyncMainCoroutine = VoidFun
+AsyncMainCoroutine = Callable[..., Coroutine[object, object, None]]
+SyncMainCoroutine = Callable[..., None]
 MainCoroutine = Callable[..., Union[Coroutine[object, object, None], None]]
 
 
@@ -105,7 +106,8 @@ def start_end_decorator(
     config: SetupMainConfig,
 ) -> Callable[[MainCoroutine], SyncMainCoroutine]:
     def decorator(func: MainCoroutine) -> SyncMainCoroutine:
-        async def async_wrapper() -> None:
+        @functools.wraps(func)
+        async def async_wrapper(*args: Any, **kwargs: Any) -> None:  # pyright: ignore[reportExplicitAny, reportAny]
             config.on_main_start()
             start_time = None
             if config.log_time:
@@ -114,10 +116,10 @@ def start_end_decorator(
             try:
                 if config.is_async:
                     main = cast(AsyncMainCoroutine, func)
-                    await main()
+                    await main(*args, **kwargs)
                 else:
                     main = cast(SyncMainCoroutine, func)
-                    main()
+                    main(*args, **kwargs)
             except Exception:
                 config.on_main_exception()
             finally:
@@ -132,8 +134,9 @@ def start_end_decorator(
                     logging.info(f"Script ended after {end_time} seconds.")
                 print()
 
-        def sync_wrapper() -> None:
-            asyncio.run(async_wrapper())
+        @functools.wraps(func)
+        def sync_wrapper(*args: Any, **kwargs: Any) -> None:  # pyright: ignore[reportExplicitAny, reportAny]
+            asyncio.run(async_wrapper(*args, **kwargs))
 
         return sync_wrapper
 
@@ -143,8 +146,9 @@ def start_end_decorator(
 def setup_main(
     config: SetupMainConfig,
 ) -> Callable[[MainCoroutine], SyncMainCoroutine]:
-    def decorator(main_coroutine: MainCoroutine) -> VoidFun:
-        def async_wrapper() -> None:
+    def decorator(main_coroutine: MainCoroutine) -> SyncMainCoroutine:
+        @functools.wraps(main_coroutine)
+        def async_wrapper(*args: Any, **kwargs: Any) -> None:  # pyright: ignore[reportExplicitAny, reportAny]
             config.setup_logging_fun()
 
             if config.use_uvloop:
@@ -159,7 +163,7 @@ def setup_main(
                     )
 
             @start_end_decorator(config)
-            async def async_main() -> None:
+            async def async_main(*a: Any, **kw: Any) -> None:  # pyright: ignore[reportExplicitAny, reportAny]
                 loop = asyncio.get_running_loop()
                 stop_event = asyncio.Event()
 
@@ -176,7 +180,7 @@ def setup_main(
                     loop.add_signal_handler(sig, on_shutdown)
 
                 async_main_coroutine = cast(AsyncMainCoroutine, main_coroutine)
-                main_task = asyncio.create_task(async_main_coroutine())
+                main_task = asyncio.create_task(async_main_coroutine(*a, **kw))
 
                 _ = await asyncio.wait(
                     {main_task, asyncio.create_task(stop_event.wait())},
@@ -191,12 +195,13 @@ def setup_main(
                 else:
                     config.on_finish()
 
-            async_main()
+            async_main(*args, **kwargs)
 
-        def sync_wrapper() -> None:
+        @functools.wraps(main_coroutine)
+        def sync_wrapper(*args: Any, **kwargs: Any) -> None:  # pyright: ignore[reportExplicitAny, reportAny]
             config.setup_logging_fun()
             decorated_main_coroutine = start_end_decorator(config)(main_coroutine)
-            decorated_main_coroutine()
+            decorated_main_coroutine(*args, **kwargs)
 
         if config.is_async:
             return async_wrapper
