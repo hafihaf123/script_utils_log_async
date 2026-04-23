@@ -425,7 +425,7 @@ wheels = [
 
 [[package]]
 name = "script-utils-log-async"
-version = "0.2.9"
+version = "0.2.10"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },

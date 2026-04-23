@@ -1,6 +1,6 @@
 [project]
 name = "script-utils-log-async"
-version = "0.2.9"
+version = "0.2.10"
 dependencies = [
     "anyio==4.9.0",
     "build==1.2.2.post1",
